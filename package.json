@@ -4,7 +4,8 @@
   "description": "Clone do tabnews.com.br o objetivo de aprender e praticar o desenvolvimento de aplicações ponta a ponta",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run services:up && npm run services:wait:database && npm run migrations:up && next dev",
+    "dev": "trap \"npm run services:stop\" INT EXIT; npm run services:up && npm run services:wait:database && npm run migrations:up && next dev",
+    "posttest": "npm run services:stop",
     "test": "npm run services:up && concurrently -n next,jest --hide next -k -s command-jest \"next dev\" \"jest --runInBand\" ",
     "test:watch": "jest --watchAll --runInBand",
     "services:up": "docker compose -f infra/compose.yaml up -d",
