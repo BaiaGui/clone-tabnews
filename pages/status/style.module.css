@@ -1,0 +1,20 @@
+.pageContainer {
+  width: 100%;
+}
+
+.container {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.lastUpdated {
+  color: gray;
+  font-size: medium;
+}
+
+.title {
+  margin: 30px 0 10px 0;
+}
+
+.listItem {
+  margin: 0 0 5px 0;
+}
