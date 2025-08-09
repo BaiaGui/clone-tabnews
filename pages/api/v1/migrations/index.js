@@ -2,27 +2,27 @@ import { createRouter } from "next-connect";
 import migrationRunner from "node-pg-migrate";
 import { resolve } from "node:path";
 import database from "infra/database";
-import { InternalServerError, MethodNotAllowedError } from "infra/errors";
+import controller from "infra/controller";
 
 const router = createRouter();
 
 router.get(getHandler);
 router.post(postHandler);
 
-export default router.handler({
-  onNoMatch: onNoMatchHandler,
-  onError: onErrorHandler,
-});
+export default router.handler(controller.errorHandlers);
 
 let dbClient;
 
 async function getHandler(req, res) {
-  const [dbClient, defaultMigrationOptions] = await configMigrationOptions();
-  const pendingMigrations = await migrationRunner(defaultMigrationOptions);
-  await dbClient.end();
-  res.status(200).json(pendingMigrations);
+  try {
+    const [dbClient, defaultMigrationOptions] = await configMigrationOptions();
+    const pendingMigrations = await migrationRunner(defaultMigrationOptions);
+    await dbClient.end();
+    res.status(200).json(pendingMigrations);
+  } finally {
+    await dbClient?.end();
+  }
 }
-
 async function configMigrationOptions() {
   dbClient = await database.getNewClient();
   const defaultMigrationOptions = {
@@ -38,28 +38,19 @@ async function configMigrationOptions() {
 }
 
 async function postHandler(req, res) {
-  const [dbClient, defaultMigrationOptions] = await configMigrationOptions();
-  const migratedMigrations = await migrationRunner({
-    ...defaultMigrationOptions,
-    dryRun: false,
-  });
+  try {
+    const [dbClient, defaultMigrationOptions] = await configMigrationOptions();
+    const migratedMigrations = await migrationRunner({
+      ...defaultMigrationOptions,
+      dryRun: false,
+    });
 
-  if (migratedMigrations.length > 0) {
-    res.status(201).json(migratedMigrations);
+    if (migratedMigrations.length > 0) {
+      res.status(201).json(migratedMigrations);
+    }
+    res.status(200).json(migratedMigrations);
+    await dbClient.end();
+  } finally {
+    await dbClient?.end();
   }
-  res.status(200).json(migratedMigrations);
-  await dbClient.end();
-}
-
-function onNoMatchHandler(req, res) {
-  const methodNotAllowedError = new MethodNotAllowedError();
-  res.status(methodNotAllowedError.statusCode).json(methodNotAllowedError);
-}
-
-async function onErrorHandler(error, req, res) {
-  console.log("Erro dentro do next-connect");
-  await dbClient?.end();
-  const publicErrorObject = new InternalServerError({ cause: error });
-  console.log(publicErrorObject);
-  res.status(500).json(publicErrorObject);
 }
